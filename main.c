@@ -92,11 +92,11 @@ int initConnection() {
 			char *fullPath;
 			getFinalPath(path, &fullPath);
 			if(!fileExists(fullPath)) {
-				printf("nix diese vorhanden: %s\n", fullPath);
+				sendHeader(clientSocket, 404, "text/html", getContentLength("www/notfound.html"));
+				sendFile(clientSocket, "www/notfound.html");
 			}
 
 			sendHeader(clientSocket, 200, contentType, getContentLength(fullPath));
-
 			sendFile(clientSocket, fullPath);
 			
 			free(headers);
