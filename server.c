@@ -15,10 +15,25 @@
 #define CHUNK_SIZE 512
 #define MAX_CLIENTS 10
 
+#define LOG_TO_STDOUT 1
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define RESET "\x1B[0m"
+
+#define INFO "INFO"
+#define SUCCESS "\x1B[32mSUCCESS\x1B[0m"
+#define ERROR "\x1B[31mERROR\x1B[0m"
+#define DEBUG "\x1B[33mDEBUG\x1B[0m"
+
 int init_sockets();
 int main_loop(int server_socket);
 
 int handle_request(int socket);
+
+int log_message(char *type, char *msg);
 
 void init_signals();
 void handle_sigchld(int sig);
@@ -114,4 +129,20 @@ void getDate(char *buf, size_t len) {
 	time_t now = time(NULL);
 
 	strftime(buf, len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
+}
+
+int log_message(char *type_str, char *msg)
+{
+    char datetime_buffer[30];
+    getDate(datetime_buffer, sizeof datetime_buffer);
+
+    if (LOG_TO_STDOUT)
+        printf("%s %s[%s]%s %s\n", type_str, BLU, datetime_buffer, RESET, msg);
+
+    return 0;
+}
+
+int handle_request(int socket)
+{
+    return 0;
 }
