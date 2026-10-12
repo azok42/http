@@ -32,14 +32,14 @@ int init_sockets();
 int main_loop(int server_socket);
 
 int handle_request(int socket);
+ssize_t receive_header(int socket, char **header);
 
 int log_message(char *type, char *msg);
-ssize_t receiveHeader(int socket, char **header);
 
 void init_signals();
 void handle_sigchld(int sig);
 
-void getDate(char *buf, size_t len);
+void get_date(char *buf, size_t len);
 
 int main(int argc, char **argv)
 {
@@ -126,7 +126,7 @@ int main_loop(int server_socket)
     }
 }
 
-void getDate(char *buf, size_t len) {
+void get_date(char *buf, size_t len) {
     time_t now = time(NULL);
 
     strftime(buf, len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
@@ -135,7 +135,7 @@ void getDate(char *buf, size_t len) {
 int log_message(char *type, char *msg)
 {
     char datetime_buffer[30];
-    getDate(datetime_buffer, sizeof datetime_buffer);
+    get_date(datetime_buffer, sizeof datetime_buffer);
 
     if (LOG_TO_STDOUT)
         printf("%s %s[%s]%s %s\n", type, BLU, datetime_buffer, RESET, msg);
@@ -146,7 +146,7 @@ int log_message(char *type, char *msg)
 int handle_request(int socket)
 {
     char *header;
-    receiveHeader(socket, &header);
+    receive_header(socket, &header);
 
     log_message(DEBUG, header);
 
@@ -154,7 +154,7 @@ int handle_request(int socket)
     return 0;
 }
 
-ssize_t receiveHeader(int socket, char **header)
+ssize_t receive_header(int socket, char **header)
 {
     char buffer[CHUNK_SIZE];
     ssize_t received_bytes, header_size = 0;
