@@ -109,13 +109,13 @@ int main_loop(int server_socket)
     pid_t child_pid;
 
     while(1) {
-		client_socket = accept(server_socket, (struct sockaddr*)&client_address, &addr_size);
-		if (client_socket < 0)
-			exit(1);
+        client_socket = accept(server_socket, (struct sockaddr*)&client_address, &addr_size);
+        if (client_socket < 0)
+            exit(1);
 
-		if ((child_pid = fork()) == 0) {
+        if ((child_pid = fork()) == 0) {
             close(server_socket);
-        
+
             handle_request(client_socket);
 
             close(client_socket);
@@ -127,9 +127,9 @@ int main_loop(int server_socket)
 }
 
 void getDate(char *buf, size_t len) {
-	time_t now = time(NULL);
+    time_t now = time(NULL);
 
-	strftime(buf, len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
+    strftime(buf, len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
 }
 
 int log_message(char *type, char *msg)
