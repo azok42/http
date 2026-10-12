@@ -38,6 +38,7 @@ int log_message(char *type, char *msg);
 
 void init_signals();
 void handle_sigchld(int sig);
+void handle_sigsegv(int sig);
 
 void get_date(char *buf, size_t len);
 
@@ -54,10 +55,16 @@ int main(int argc, char **argv)
 
 void init_signals() {
     signal(SIGCHLD, handle_sigchld);
+    signal(SIGSEGV, handle_sigsegv);
 }
 
 void handle_sigchld(int sig) {
     while (waitpid(-1, NULL, WNOHANG) > 0);
+}
+
+void handle_sigsegv(int sig) {
+    log_message(ERROR, "Received SEGV signal");
+    exit(sig);
 }
 
 int init_sockets()
