@@ -34,6 +34,7 @@ int main_loop(int server_socket);
 int handle_request(int socket);
 
 int log_message(char *type, char *msg);
+ssize_t receiveHeader(int socket, char **header);
 
 void init_signals();
 void handle_sigchld(int sig);
@@ -144,5 +145,40 @@ int log_message(char *type_str, char *msg)
 
 int handle_request(int socket)
 {
+    char *header;
+    receiveHeader(socket, &header);
+
+    log_message(DEBUG, header);
+
+    free(header);
     return 0;
+}
+
+ssize_t receiveHeader(int socket, char **header)
+{
+    char buffer[CHUNK_SIZE];
+    ssize_t received_bytes, header_size = 0;
+    *header = NULL;
+
+    while ((received_bytes = recv(socket, buffer, CHUNK_SIZE-1, 0)) > 0) {
+        buffer[received_bytes] = '\0';
+        header_size += received_bytes;
+
+        // check if buffer is not already malloc'd
+		if (!(*header)) {
+			*header = (char *) malloc(received_bytes + 1);
+			strcpy(*header, buffer);
+		} else {
+			*header = realloc(*header, strlen(*header) + received_bytes + 1);
+			strcat(*header, buffer);
+		}
+
+		char *header_end = strstr(*header, "\r\n\r\n");
+		if (header_end) {
+            *header_end = '\0';
+			return header_size;
+        }
+    }
+
+    return -1;
 }
