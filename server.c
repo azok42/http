@@ -132,13 +132,13 @@ void getDate(char *buf, size_t len) {
 	strftime(buf, len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
 }
 
-int log_message(char *type_str, char *msg)
+int log_message(char *type, char *msg)
 {
     char datetime_buffer[30];
     getDate(datetime_buffer, sizeof datetime_buffer);
 
     if (LOG_TO_STDOUT)
-        printf("%s %s[%s]%s %s\n", type_str, BLU, datetime_buffer, RESET, msg);
+        printf("%s %s[%s]%s %s\n", type, BLU, datetime_buffer, RESET, msg);
 
     return 0;
 }
