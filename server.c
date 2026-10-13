@@ -28,6 +28,11 @@
 #define ERROR "\x1B[31mERROR\x1B[0m"
 #define DEBUG "\x1B[33mDEBUG\x1B[0m"
 
+// errors
+#define SOCKET_ERROR -1
+#define MALLOC_ERROR -2
+#define HEADER_SYNTAX_ERROR -3
+
 int init_sockets();
 int main_loop(int server_socket);
 
@@ -75,15 +80,16 @@ int init_sockets()
 
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket < 0) {
-        printf("Error in socket creation.\n");
-        exit(1);
+        log_message(ERROR, "Error in socket creation.");
+        exit(SOCKET_ERROR);
     }
-    printf("Server Socket is created.\n");
+    log_message(INFO, "Server Socket is created.");
 
     int reuse = 1;
     int result = setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
     if (result < 0) {
-        perror("ERROR SO_REUSEADDR:");
+        log_message(ERROR, "Failed to set socket option SO_REUSEADDR");
+        exit(SOCKET_ERROR);
     }
 
     memset(&server_addr, '\0', sizeof(server_addr));
@@ -94,15 +100,16 @@ int init_sockets()
 
     ret = bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if (ret < 0) {
-        printf("Error in binding.\n");
-        exit(1);
+        log_message(ERROR, "Error in binding.");
+        exit(SOCKET_ERROR);
     }
 
     if (listen(server_socket, MAX_CLIENTS) != 0) {
-        printf("Error at starting to listen\n");
-        exit(1);
+        log_message(ERROR, "Error at starting to listen");
+        exit(SOCKET_ERROR);
     }
-    printf("Listening...\n\n");
+    log_message(INFO, "Listening...\n");
+
 
     return server_socket;
 }
@@ -117,8 +124,10 @@ int main_loop(int server_socket)
 
     while(1) {
         client_socket = accept(server_socket, (struct sockaddr*)&client_address, &addr_size);
-        if (client_socket < 0)
-            exit(1);
+        if (client_socket < 0) {
+            log_message(ERROR, "Failed to accept connection");
+            exit(SOCKET_ERROR);
+        }
 
         if ((child_pid = fork()) == 0) {
             close(server_socket);
@@ -174,9 +183,15 @@ ssize_t receive_header(int socket, char **header)
         // check if buffer is not already malloc'd
 		if (!(*header)) {
 			*header = (char *) malloc(received_bytes + 1);
+            if (!header)
+                return MALLOC_ERROR;
+
 			strcpy(*header, buffer);
 		} else {
 			*header = realloc(*header, strlen(*header) + received_bytes + 1);
+            if (!header)
+                return MALLOC_ERROR;
+
 			strcat(*header, buffer);
 		}
 
