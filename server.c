@@ -15,6 +15,8 @@
 #define CHUNK_SIZE 512
 #define MAX_CLIENTS 10
 
+#define HEADER_END "\r\n"
+
 #define LOG_TO_STDOUT 1
 
 #define RED   "\x1B[31m"
@@ -38,6 +40,7 @@ int main_loop(int server_socket);
 
 int handle_request(int socket);
 ssize_t receive_header(int socket, char **header);
+ssize_t get_request_line(char *header, ssize_t header_length, char **request_line);
 
 int log_message(char *type, char *msg);
 
@@ -136,6 +139,8 @@ int main_loop(int server_socket)
 
             close(client_socket);
             exit(0);
+        } else if (child_pid == -1) {
+            log_message(ERROR, "Failed to fork");
         }
 
         close(client_socket);
@@ -162,11 +167,13 @@ int log_message(char *type, char *msg)
 int handle_request(int socket)
 {
     char *header;
-    receive_header(socket, &header);
+    ssize_t header_length = receive_header(socket, &header);
 
-    log_message(DEBUG, header);
+    char *request_line;
+    ssize_t request_line_size = get_request_line(header, header_length, &request_line);
 
     free(header);
+    free(request_line);
     return 0;
 }
 
@@ -189,7 +196,7 @@ ssize_t receive_header(int socket, char **header)
 			strcpy(*header, buffer);
 		} else {
 			*header = realloc(*header, strlen(*header) + received_bytes + 1);
-            if (!header)
+            if (!*header)
                 return MALLOC_ERROR;
 
 			strcat(*header, buffer);
@@ -203,4 +210,22 @@ ssize_t receive_header(int socket, char **header)
     }
 
     return -1;
+}
+
+ssize_t get_request_line(char *header, ssize_t header_length, char **request_line)
+{
+    char *request_line_end = strstr(header, HEADER_END);
+    if (!request_line_end)
+        return HEADER_SYNTAX_ERROR;
+
+    size_t request_line_size = request_line_end - header;
+
+    *request_line = (char*) malloc(request_line_size + 1);
+    if (!*request_line)
+        return MALLOC_ERROR;
+
+    strncpy(*request_line, header, request_line_size);
+    (*request_line)[request_line_size] = '\0';
+
+    return request_line_size;
 }
