@@ -16,6 +16,7 @@
 #define MAX_CLIENTS 10
 
 #define HEADER_END "\r\n"
+#define HEADER_SEPERATOR ":"
 
 #define LOG_TO_STDOUT 1
 
@@ -35,12 +36,23 @@
 #define MALLOC_ERROR -2
 #define HEADER_SYNTAX_ERROR -3
 
+typedef struct
+{
+    char *name;
+    int name_length;
+
+    char *value;
+    int value_length;
+} Header;
+
 int init_sockets();
 int main_loop(int server_socket);
 
 int handle_request(int socket);
 ssize_t receive_header(int socket, char **header);
 ssize_t get_request_line(char *header, ssize_t header_length, char **request_line);
+ssize_t parse_headers(char *header, ssize_t header_offset, Header **headers); 
+size_t get_header_part(char **header_part, char *header, size_t header_offset, char *search_pattern);
 
 int log_message(char *type, char *msg);
 
@@ -168,9 +180,27 @@ int handle_request(int socket)
 {
     char *header;
     ssize_t header_length = receive_header(socket, &header);
+    if (header_length <= 0) {
+        char buffer[64];
+        sprintf(buffer, "Failed to receive header. Returned with code: %ld", header_length);
+        log_message(ERROR, buffer);
+    }
 
     char *request_line;
     ssize_t request_line_size = get_request_line(header, header_length, &request_line);
+    if (request_line_size <= 0) {
+        char buffer[64];
+        sprintf(buffer, "Failed to parse request line. Returned with code: %ld", request_line_size);
+        log_message(ERROR, buffer);
+    }
+
+    Header *headers;
+    ssize_t header_count = parse_headers(header, request_line_size + strlen(HEADER_END), &headers);
+    if (header_count <= 0) {
+        char buffer[64];
+        sprintf(buffer, "Failed to parse headers. Returned with code: %ld", header_count);
+        log_message(ERROR, buffer);
+    }
 
     free(header);
     free(request_line);
@@ -202,7 +232,10 @@ ssize_t receive_header(int socket, char **header)
 			strcat(*header, buffer);
 		}
 
-		char *header_end = strstr(*header, "\r\n\r\n");
+		char *header_end = strstr(*header, HEADER_END HEADER_END);
+        header_end += strlen(HEADER_END);
+        header_size += strlen(HEADER_END);
+
 		if (header_end) {
             *header_end = '\0';
 			return header_size;
@@ -228,4 +261,52 @@ ssize_t get_request_line(char *header, ssize_t header_length, char **request_lin
     (*request_line)[request_line_size] = '\0';
 
     return request_line_size;
+}
+
+ssize_t parse_headers(char *header, ssize_t header_offset, Header **headers)
+{
+    header += header_offset;
+    size_t header_count = 0;
+
+    while (1) {
+        if (!strstr(header, HEADER_END))
+            return header_count;
+
+        char *header_name;
+        size_t header_name_size = get_header_part(&header_name, header, header_offset, HEADER_SEPERATOR);
+        if (header_name_size <= 0) {
+            return header_name_size;
+        }
+        header += header_name_size + strlen(HEADER_SEPERATOR);
+
+        printf("%s\n", header_name);
+
+        char *header_value;
+        size_t header_value_size = get_header_part(&header_value, header, header_offset, HEADER_END);
+        if (header_value_size <= 0) {
+            return header_name_size;
+        }
+        header += header_value_size + strlen(HEADER_END);
+
+        printf("%s\n", header_value);
+        header_count++;
+    }
+}
+
+size_t get_header_part(char **header_part, char *header, size_t header_offset, char *search_pattern)
+{
+    char *header_part_end = strstr(header, search_pattern);
+    if (!header_part_end)
+        return HEADER_SYNTAX_ERROR;
+
+    size_t header_part_size = header_part_end - header;
+
+    *header_part = (char*) malloc(header_part_size + 1);
+    if (!header_part)
+        return MALLOC_ERROR;
+
+    strncpy(*header_part, header, header_part_size);
+    (*header_part)[header_part_size] = '\0';
+
+    return header_part_size;
 }
